@@ -1,4 +1,5 @@
-saida/
-cache/
-propagandas/
-/lantv-canal
+dados/
+/lantv
+/lantv.exe
+ffmpeg.exe
+ffprobe.exe

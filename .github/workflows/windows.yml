@@ -1,0 +1,27 @@
+name: Windows
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - name: Verificar
+        run: |
+          go vet ./...
+          GOOS=windows go vet ./...
+      - name: Compilar lantv.exe
+        run: |
+          mkdir -p dist
+          GOOS=windows GOARCH=amd64 go build -ldflags "-H=windowsgui -s -w" -o dist/lantv.exe ./cmd/lantv
+          cp instalar-windows.ps1 LEIA-ME.md dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lantv-windows
+          path: dist/

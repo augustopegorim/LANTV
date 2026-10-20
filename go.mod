@@ -2,7 +2,10 @@ module github.com/augustopegorim/lantv
 
 go 1.22
 
-require github.com/go-zeromq/zmq4 v0.17.0
+require (
+	github.com/go-zeromq/zmq4 v0.17.0
+	golang.org/x/sys v0.26.0
+)
 
 require (
 	github.com/go-zeromq/goczmq/v4 v4.2.2 // indirect

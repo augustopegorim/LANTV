@@ -13,10 +13,11 @@ Canal próprio de propaganda transmitido pela rede (LAN) para até 10 TVs (50–
 | Conteúdo protegido (Netflix, Globoplay etc.) via TV box aparece preto na captura → o canal fica na propaganda | Mesmo motivo; é o comportamento esperado |
 | Nunca tela preta: sem imagem na HDMI, o canal volta sozinho para a propaganda; o app da TV guarda propagandas para tocar se o PC/rede cair | Requisito: "abriu o local, está passando" |
 | Qualidade: canal em 1080p ou até 4K, sempre H.264 | H.264 é o formato que todas as TVs e apps tocam |
-| 4K exige codificação por hardware (Intel Quick Sync) | Teste: só com processador, 4K rodou a 35% do tempo real |
+| 4K exige codificação por hardware (Intel Quick Sync) | Teste (4 núcleos): só com processador, 4K rodou a 35% do tempo real |
 | Rede: switch gigabit exclusivo das TVs | Já existe; 10 TVs × 25 Mbps (4K) ≈ 250 Mbps, cabe com folga |
-| PC central com Ubuntu 24.04 LTS, em sala fechada com ar-condicionado | Estabilidade 24/7; ar protege contra maresia |
-| Tecnologia: Go (controle e painel), FFmpeg (vídeo), HLS (entrega), Kotlin/Android TV (app) | HLS toca em qualquer TV/app; Go gera um executável só |
+| PC central com **Windows 10/11**, em sala fechada com ar-condicionado | Decisão do cliente; ar protege contra maresia |
+| Tecnologia: Go (`lantv.exe`: motor + painel web), FFmpeg (vídeo), HLS (entrega); app Kotlin/Android TV só na fase 2 | HLS toca em qualquer TV/app; um executável só |
+| 4K por hardware no Windows: Intel Quick Sync, NVIDIA ou AMD (escolha automática) | Mini PC com Intel i5 12ª geração+ já resolve |
 
 ## Arquitetura
 
@@ -34,7 +35,7 @@ SALA CENTRAL                                                        PONTOS (só 
 
 | Item | Faixa |
 |---|---|
-| Mini PC Intel i5 12ª geração ou mais nova (Quick Sync), SSD, 16 GB — N100 só se o canal ficar em 1080p | R$ 2.500–4.000 |
+| Mini PC com Windows 11, Intel i5 12ª geração ou mais nova (Quick Sync), SSD, 16 GB — N100 só se o canal ficar em 1080p | R$ 2.500–4.000 |
 | Placa de captura HDMI USB 3.x, MJPEG (UVC): 1080p (TV box vira 4K por ampliação) ou 4K30 real | R$ 150–600 / R$ 800–2.000 |
 | Nobreak 1 kVA | R$ 600–1.000 |
 
@@ -42,52 +43,26 @@ SALA CENTRAL                                                        PONTOS (só 
 
 | Fase | Entrega | Pronta quando |
 |---|---|---|
-| **0. Teste de bancada** | 1 TV + PC + placa, com o protótipo `lantv-canal` | Roteiro abaixo aprovado |
-| 1. Motor do canal | Playlist 24h, troca HDMI/propaganda, atualizar playlist sem derrubar o canal, reinício automático | 7 dias sem intervenção |
+| **0. Teste de bancada** | 1 TV + PC + placa, com o `lantv.exe` | Roteiro abaixo aprovado |
+| 1. Motor do canal e painel — **feito (falta validar no Windows)** | Playlist 24h, troca HDMI/propaganda, painel web (enviar, ordenar, pausar, remover, modo, configurações), mudanças sem derrubar o canal, reinício automático | 7 dias sem intervenção |
 | 2. App Android/Google TV | Abre sozinho ao ligar, tela cheia, reconecta, toca propagandas guardadas se o canal cair | TV religada / cabo puxado → volta sozinha |
-| 3. Painel web | Subir, ordenar e remover propagandas; ver o que está no ar; forçar HDMI/propaganda | Operador usa sem ajuda |
 | 4. TVs Samsung/LG | App IPTV da loja apontando para o canal; avaliar app próprio | Todas as TVs da casa abrindo o canal |
 | 5. Instalação | PC na sala com ar, nobreak, BIOS "ligar ao voltar energia", TVs configuradas | 7 dias em produção sem chamado |
 
-Antes da fase 3, avaliar o [ffplayout](https://github.com/ffplayout/ffplayout) (playout 24/7 pronto, com painel web e entrada ao vivo) como alternativa a construir o painel do zero.
 
 ## Fase 0 — roteiro de teste de bancada
 
-### Preparar o PC
+### Preparar o PC (Windows)
 
-```bash
-sudo apt install ffmpeg golang-go v4l-utils alsa-utils git intel-media-va-driver-non-free vainfo
-git clone <repo> lantv && cd lantv
-go build -o lantv-canal ./cmd/lantv-canal
-vainfo | grep -i h264 | grep -i enc     # precisa listar VAProfileH264High ... VAEntrypointEncSlice(LP)
-```
+Siga o [LEIA-ME.md](LEIA-ME.md): baixar o `lantv.exe` (GitHub Actions → *Windows*), colocar `ffmpeg.exe`/`ffprobe.exe` (versão *full*) na mesma pasta e rodar `instalar-windows.ps1`.
 
-Identificar a placa de captura:
+### Rodar o teste
 
-```bash
-v4l2-ctl --list-devices                               # vídeo, ex.: /dev/video0
-v4l2-ctl -d /dev/video0 --list-formats-ext | grep -A3 MJPG   # precisa ter 1920x1080 30fps
-arecord -L | grep -i hw:                               # áudio, ex.: hw:CARD=MS2109,DEV=0
-```
-
-### Rodar
-
-```bash
-mkdir propagandas   # copiar vídeos/imagens; tocam em ordem alfabética (01-..., 02-...)
-
-# 1) sem placa, HDMI simulada (20 s imagem / 20 s preto)
-./lantv-canal -hdmi simular
-
-# 2) com a placa
-./lantv-canal -hdmi /dev/video0 -hdmi-audio hw:CARD=MS2109,DEV=0
-
-# 3) 4K com Quick Sync (placa capturando em 1080p; use -hdmi-tamanho 3840x2160 se ela capturar 4K)
-./lantv-canal -hdmi /dev/video0 -largura 3840 -altura 2160 -bitrate 25M -codificador vaapi
-```
-
-- Canal: `http://IP-DO-PC:8080/canal/canal.m3u8`
-- Página de teste (navegador da TV): `http://IP-DO-PC:8080/`
-- Estado / forçar fonte: `http://IP-DO-PC:8080/status?modo=auto|propaganda|hdmi`
+1. Sem placa: `lantv.exe -simular` (HDMI de mentira: 20 s imagem, 20 s preto). Abra o painel `http://IP-DO-PC:8080/`.
+2. Envie 2 ou 3 propagandas pelo painel e confira que tocam em sequência.
+3. Com a placa: painel → *Configurações* → escolher a placa de captura e o áudio dela → *Salvar e aplicar*.
+4. 4K: *Configurações* → Qualidade 4K (codificador *Automático* escolhe Quick Sync/NVIDIA/AMD). Se a placa de captura for 4K, marque "A placa de captura é 4K".
+5. Nas TVs: app de IPTV/VLC com `http://IP-DO-PC:8080/canal/canal.m3u8`, ou o navegador da TV em `http://IP-DO-PC:8080/tv`.
 
 ### Checklist (anotar resultado por marca/modelo de TV)
 
@@ -105,7 +80,7 @@ mkdir propagandas   # copiar vídeos/imagens; tocam em ordem alfabética (01-...
 | 10 | Puxar o cabo de rede da TV e recolocar | Anotar se volta sozinha |
 | 11 | Desligar e ligar a TV | Anotar se abre sozinha no canal (por marca) |
 | 12 | Deixar rodando 24 h | Sem travar; memória estável |
-| 13 | Canal em 4K com `-codificador vaapi` (comando 3) | `ls saida` ganha 1 segmento a cada 2 s; CPU abaixo de 60% |
+| 13 | Qualidade 4K no painel | Painel mostra o codificador de hardware em uso; CPU abaixo de 60% |
 | 14 | Canal 4K em cada TV | Toca liso; anotar TVs que não abrem 4K |
 
 ## Riscos
@@ -116,9 +91,9 @@ mkdir propagandas   # copiar vídeos/imagens; tocam em ordem alfabética (01-...
 | TVs com app da loja mostram erro (não propaganda) se o PC cair | Só o app próprio (fase 2) tem propagandas guardadas |
 | PC central é ponto único de falha | Nobreak, reinício automático, app com propagandas guardadas |
 | Placa mostra tela "No Signal" colorida em vez de preto | Teste 4; ajustar o detector |
-| Trocar a playlist hoje reinicia o canal (TVs piscam alguns segundos) | Resolver na fase 1 |
+| Se a placa de captura falhar, o canal reinicia uma vez (~3 s) e segue só com propagandas; o motor tenta a placa de novo em 30 s, 1, 2, 5 e 10 min | Teste 8 |
 | Deriva de relógio entre placa e playlist em execução longa | Teste 12 |
-| Caminho 4K com Quick Sync ainda não testado (ambiente de desenvolvimento sem GPU Intel) | Testes 13–14 na bancada |
+| Windows: captura (DirectShow) e codificadores por hardware ainda não testados em PC real (desenvolvido em Linux, compilado para Windows) | Testes 4–8 e 13–14 na bancada |
 | Em 4K, ampliar a imagem e decodificar as propagandas ainda usa o processador | Medir no teste 13; se pesar, mover para a GPU na fase 1 |
 | Quando a HDMI escurece, o preto fica ~3 s no ar antes de voltar à propaganda (espera para não trocar em cena escura) | Ajustar o tempo no teste 7 |
 
@@ -127,6 +102,7 @@ mkdir propagandas   # copiar vídeos/imagens; tocam em ordem alfabética (01-...
 | Teste | Resultado |
 |---|---|
 | Troca automática HDMI ↔ propaganda (5 ciclos + troca forçada), gravando o canal por 100 s como uma TV | 3.002 quadros contínuos, sem lacuna de vídeo ou áudio; troca em ~2 s (sinal) e ~3 s (preto) |
+| Painel/API: enviar 3 vídeos + 1 imagem (arquivo .exe recusado), reordenar, pausar, mudar tempo da imagem, remover, trocar modo — com o canal gravado por 70 s | 2.101 quadros, nenhuma lacuna de vídeo ou áudio; miniaturas e estados corretos |
 | Placa ausente | Canal no ar só com propaganda |
 | Pasta de propagandas vazia | Vinheta "LANTV" no ar (nunca preto) |
 | Motor de vídeo derrubado à força | Volta sozinho em ~2 s; TVs recebem aviso de descontinuidade |
