@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Varredura de rede</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<header>
+  <h1>Varredura de rede</h1>
+  <span id="pc" class="suave"></span>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. Onde varrer</h2>
+    <p class="suave">Marcamos a rede em que este PC está conectado. Para varrer outras faixas, adicione abaixo.</p>
+    <div id="redes" class="chips"></div>
+
+    <form id="formFaixa" class="linha-form">
+      <input id="novaFaixa" placeholder="Outra faixa: 10.0.0.0/24, 192.168.2.10-50 ou um IP" autocomplete="off" spellcheck="false">
+      <button class="botao" type="submit">Adicionar</button>
+    </form>
+    <div id="extras" class="chips"></div>
+
+    <h2 class="espaco">2. Quanto investigar</h2>
+    <div class="opcoes">
+      <label><input type="radio" name="portas" value="nenhuma"> <b>Rápida</b><small>só descobre quem está ligado</small></label>
+      <label><input type="radio" name="portas" value="comuns" checked> <b>Padrão</b><small>+ serviços comuns (~40 portas)</small></label>
+      <label><input type="radio" name="portas" value="ampla"> <b>Completa</b><small>+ portas 1–1024 (bem mais lenta)</small></label>
+    </div>
+
+    <div class="acoes-topo">
+      <button id="iniciar" class="botao primario grande-btn">Iniciar varredura</button>
+      <button id="parar" class="botao grande-btn" hidden>Parar</button>
+      <span id="total" class="suave"></span>
+    </div>
+    <div id="progresso" class="progresso" hidden><div id="barra"></div><em id="progressoTexto"></em></div>
+  </section>
+
+  <section class="card" id="resultado" hidden>
+    <div class="topo-res">
+      <h2 id="tituloRes">Aparelhos encontrados</h2>
+      <div class="ferramentas">
+        <input id="busca" type="search" placeholder="Buscar nome, IP, MAC, fabricante…" autocomplete="off">
+        <a class="botao" href="/api/exportar?formato=csv" download>Exportar CSV</a>
+        <a class="botao" href="/api/exportar?formato=json" download>JSON</a>
+      </div>
+    </div>
+    <div class="tabela-wrap">
+      <table id="tabela">
+        <thead><tr>
+          <th data-col="ip">IP</th><th data-col="nome">Nome</th><th data-col="mac">MAC</th>
+          <th data-col="fabricante">Fabricante</th><th data-col="tipo">Tipo</th><th data-col="portas">Portas</th><th data-col="rtt_ms">Tempo</th>
+        </tr></thead>
+        <tbody id="corpo"></tbody>
+      </table>
+    </div>
+    <p id="vazio" class="vazio" hidden>Nenhum aparelho respondeu nesta faixa.</p>
+    <p class="suave rodape">Clique em um aparelho para ver todos os detalhes. O MAC só aparece para aparelhos na mesma rede deste PC (ou quando o próprio aparelho informa por NetBIOS); em outras faixas, o roteador esconde o MAC.</p>
+  </section>
+</main>
+<div id="aviso" class="aviso" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

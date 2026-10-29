@@ -1,0 +1,24 @@
+name: Windows
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - name: Verificar
+        run: |
+          go vet ./...
+          GOOS=windows go vet ./...
+      - name: Compilar lanscan.exe
+        run: GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o lanscan.exe ./cmd/lanscan
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lanscan-windows
+          path: lanscan.exe
